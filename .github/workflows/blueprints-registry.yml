@@ -1,0 +1,70 @@
+name: Blueprints Registry
+
+on:
+  pull_request:
+    paths:
+      - "page-blueprints/**"
+      - "card-blueprints/**"
+      - "blueprints.json"
+      - "scripts/**"
+      - ".github/workflows/blueprints-registry.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "page-blueprints/**"
+      - "card-blueprints/**"
+      - "blueprints.json"
+      - "scripts/**"
+      - ".github/workflows/blueprints-registry.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  registry:
+    name: Generate registry and check versions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Checkout read-only
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate blueprints.json
+        run: ruby scripts/generate_blueprints_registry.rb
+
+      - name: Check changed blueprint versions
+        if: github.event_name == 'pull_request'
+        run: ruby scripts/check_blueprint_versions.rb ${{ github.event.pull_request.base.sha }}
+
+      - name: Check changed blueprint versions on push
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        run: ruby scripts/check_blueprint_versions.rb ${{ github.event.before }}
+
+      - name: Commit generated registry
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+        run: |
+          if git diff --quiet -- blueprints.json; then
+            echo "blueprints.json is up to date"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add blueprints.json
+          git commit -m "Update blueprint registry"
+          git push
+
+      - name: Verify generated registry is committed
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        run: git diff --exit-code -- blueprints.json

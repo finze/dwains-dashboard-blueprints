@@ -12,4 +12,15 @@ With the **Card blueprints** you can add custom pre-made/pre-configured lovelace
 ### Page Blueprint
 With **Page blueprints** you can still add own pages to Dwains Dashboard, you even can put them in the main navbar! Let’s say you want a page with some statistics or just an extra page with some cards. Then more page blueprints is the way to go.
 
+### Blueprint gallery registry
+Dwains Dashboard v4 reads `blueprints.json` for the in-dashboard blueprint gallery. This file is generated automatically from the blueprint YAML files in `page-blueprints/` and `card-blueprints/`.
+
+When you open a pull request that adds or changes a blueprint, GitHub Actions regenerates `blueprints.json`. If the pull request comes from this repository, the action commits the generated registry back to the PR branch. For forked pull requests, run this locally before pushing:
+
+```bash
+ruby scripts/generate_blueprints_registry.rb
+```
+
+When changing an existing blueprint YAML file, always increase its `blueprint.version`. Pull requests that change a blueprint without increasing its version will fail the version check.
+
 [For more info about Dwains Dashboard Blueprints please take a look here](https://dwainscheeren.github.io/dwains-lovelace-dashboard/v3/blueprint/what-are-blueprints.html)
